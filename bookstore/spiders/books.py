@@ -2,13 +2,16 @@ import scrapy
 from scrapy.http import Response
 from bookstore.items import Book
 
+# Define rating map as a constant
+RATING_MAP = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
+
 
 class BooksSpider(scrapy.Spider):
     name = "books"
     allowed_domains = ["books.toscrape.com"]
     start_urls = ["https://books.toscrape.com/"]
 
-    def parse(self, response: Response):
+    def parse(self, response: Response) -> scrapy.Request:
         book_detail_links = response.css(".product_pod > h3 > a::attr(href)").getall()
 
         for link in book_detail_links:
@@ -19,7 +22,7 @@ class BooksSpider(scrapy.Spider):
             yield response.follow(next_page, callback=self.parse)
 
     @staticmethod
-    def _get_amount_in_stock(response: Response):
+    def _get_amount_in_stock(response: Response) -> int:
         stock_text = response.css("table.table td::text").getall()
         print("Stock text:", stock_text)
         if len(stock_text) >= 6:
@@ -28,15 +31,15 @@ class BooksSpider(scrapy.Spider):
             print("Stock quantity:", stock_quantity)
             if stock_quantity:
                 return int(stock_quantity)
+
         return 0
 
     @staticmethod
-    def _get_rating(response: Response):
+    def _get_rating(response: Response) -> int:
         rating_classes = response.css("p.star-rating::attr(class)").get()
-        rating_map = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
-        return rating_map.get(rating_classes.split()[1])
+        return RATING_MAP.get(rating_classes.split()[1])
 
-    def parse_book(self, response: Response):
+    def parse_book(self, response: Response) -> Book:
         yield Book(
             title=response.css(".product_main > h1::text").get(),
             price=float(response.css("p.price_color::text").get().replace("£", "")),
